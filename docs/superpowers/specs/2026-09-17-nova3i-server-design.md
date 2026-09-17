@@ -20,6 +20,12 @@ server and Linux learning sandbox, using no root and no paid infrastructure.
   forwarding is impossible. Public exposure must be an outbound tunnel.
 - Public exposure method chosen: **Tailscale Funnel** (free, stable
   `*.ts.net` hostname, works behind CGNAT, optional auth).
+- The owner has the domain `jamilur.com` (Hostinger DNS; Vercel CNAMEs for
+  `bhulbona.jamilur.com` and `me.jamilur.com`). It is **deliberately not
+  used** for this server, to keep the phone isolated from existing domains.
+  Cloudflare was considered and rejected: on the free plan a subdomain cannot
+  be a separate zone (Enterprise-only), so isolation would require moving the
+  entire `jamilur.com` zone, which co-mingles it with the phone.
 
 ## Non-goals
 
@@ -27,6 +33,9 @@ server and Linux learning sandbox, using no root and no paid infrastructure.
 - No Docker or true containers (not feasible without root here).
 - Not production-grade; proot and a phone are for learning and light use.
 - No public exposure of SSH (SSH stays on the tailnet).
+- No custom domain and no DNS changes to any existing domain.
+- No credentials for other services (Cloudflare/Vercel/Hostinger API tokens,
+  SSH keys to other machines) are ever stored on the phone.
 
 ## Architecture (Approach A — split edge)
 
@@ -130,6 +139,33 @@ Boot and supervision:
 
 ## Security
 
+### Isolation from other domains and services
+
+The phone is expected to eventually run an autonomous agent (e.g. Hermes /
+OpenClaw) with broad local access. Treat the phone as a potentially hostile
+host and constrain what a compromise can reach.
+
+- **No privileged credentials on the device.** Only the Tailscale node identity
+  is stored. No Cloudflare/Vercel/Hostinger API tokens, no SSH private keys to
+  other machines, no cloud credentials. A Tailscale node identity can only
+  serve its own Funnel, never DNS or other accounts.
+- **Separate domain namespace.** The server is reachable only at
+  `<node>.ts.net`; it has no relationship to `jamilur.com`. This removes the
+  DNS/hosting layer as a pivot path.
+- **Network egress isolation at the router.** Place the phone on an isolated
+  guest/IoT VLAN or SSID. Allow outbound only to what the server needs
+  (Tailscale/DERP endpoints and general HTTPS if required); block access to
+  other LAN devices, NAS, admin panels, and internal subnets. This prevents
+  lateral movement from a compromised agent.
+- **Unprivileged agent.** The agent runs as an ordinary user inside the Debian
+  proot sandbox, never as root and never with Android storage permissions
+  beyond what is required. Termux on an unrooted phone cannot escalate to
+  system root.
+- **Revocability.** The Tailscale node can be removed from the tailnet at any
+  time, and Funnel disabled, without touching any other infrastructure.
+
+### General hardening
+
 - Public only on `443`; SSH never public.
 - `basic_auth` (bcrypt) on `/admin/*` and any other private route.
 - Key-only SSH, nonstandard port, tailnet-restricted.
@@ -149,6 +185,12 @@ Boot and supervision:
   databases or production traffic.
 - **Always-plugged battery** -> no charge limiter on the Nova 3i; expect
   battery wear over time.
+- **Agent with broad access reconfiguring the tunnel** -> without root the
+  agent shares the Termux UID and can in principle change Funnel/serve. This is
+  accepted; the isolation controls above limit the blast radius to the phone's
+  own public endpoint, not other domains or the LAN.
+- **Public Funnel endpoint abused** -> keep private routes behind auth; rotate
+  or disable Funnel if abuse is observed.
 
 ## Verification / acceptance
 
@@ -160,8 +202,14 @@ Boot and supervision:
 5. `/api/*` and `/node/*` return the sample apps' responses.
 6. Full reboot test: after reboot with no manual action, all of the above
    still holds.
+7. Isolation test: from inside the phone, confirm no credentials for other
+   services exist, and confirm the phone cannot reach other LAN devices or
+   internal services (egress/VLAN rules effective).
+8. Confirm `jamilur.com` and its subdomains are unchanged and resolve as before.
 
 ## Open questions
 
 - Final tailnet node name / hostname (assigned by Tailscale at build time).
 - Whether to add a second public endpoint on `8443`/`10000` later.
+- Exact router/VLAN mechanism for egress isolation (depends on the network
+  hardware available).
