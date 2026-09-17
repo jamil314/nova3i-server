@@ -1,0 +1,31 @@
+{
+	admin off
+	auto_https off
+}
+
+http://127.0.0.1:8080 {
+	encode gzip
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /node/* {
+		uri strip_prefix /node
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle /admin/* {
+		basic_auth {
+			admin {$ADMIN_PASSWORD_HASH}
+		}
+		uri strip_prefix /admin
+		reverse_proxy 127.0.0.1:9000
+	}
+
+	handle {
+		root * /data/data/com.termux/files/home/nova3i/webroot
+		file_server
+	}
+}
