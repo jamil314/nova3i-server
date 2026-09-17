@@ -5,3 +5,8 @@ config/auth.env
 # runtime
 *.log
 logs/
+
+# dependencies / caches
+node_modules/
+__pycache__/
+*.pyc
