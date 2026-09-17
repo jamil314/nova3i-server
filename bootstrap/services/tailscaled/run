@@ -1,0 +1,2 @@
+#!/data/data/com.termux/files/usr/bin/bash
+exec "$HOME/nova3i/bootstrap/02-start-tailscaled.sh"

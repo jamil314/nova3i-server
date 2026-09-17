@@ -1,0 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+NOVA="$HOME/nova3i"
+[[ -f "$NOVA/config/auth.env" ]] && { set -a; . "$NOVA/config/auth.env"; set +a; }
+exec caddy run --config "$NOVA/config/Caddyfile" --adapter caddyfile
