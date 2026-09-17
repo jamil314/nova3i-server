@@ -1,0 +1,7 @@
+# secrets
+config/auth.env
+*.env.local
+
+# runtime
+*.log
+logs/

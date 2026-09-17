@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nova 3i Server</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+    code { background: #f0f0f0; padding: .1rem .3rem; border-radius: 4px; }
+    li { margin: .4rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Nova 3i Server</h1>
+  <p>This phone is running a Debian sandbox behind a Caddy reverse proxy, exposed publicly through Tailscale Funnel.</p>
+  <ul>
+    <li><a href="/api/hello">/api/hello</a> &mdash; Python (FastAPI)</li>
+    <li><a href="/node/hello">/node/hello</a> &mdash; Node (Express)</li>
+    <li><code>/admin/*</code> &mdash; requires authentication</li>
+  </ul>
+</body>
+</html>
