@@ -1,9 +1,9 @@
 {
 	admin off
-	auto_https off
+	auto_https disable_redirects
 }
 
-http://127.0.0.1:8080 {
+(backends) {
 	encode gzip
 
 	handle /api/* {
@@ -24,8 +24,26 @@ http://127.0.0.1:8080 {
 		reverse_proxy 127.0.0.1:9000
 	}
 
+	handle /health {
+		reverse_proxy 127.0.0.1:3100
+	}
+
 	handle {
 		root * /data/data/com.termux/files/home/nova3i/webroot
 		file_server
 	}
+}
+
+http://127.0.0.1:8080 {
+	import backends
+}
+
+https://nova3i.taila5f58b.ts.net:8443 {
+	tls /data/data/com.termux/files/home/nova3i/config/ts.crt /data/data/com.termux/files/home/nova3i/config/ts.key
+	import backends
+}
+
+https://nova3i.jamilur.com:8443 {
+	tls /data/data/com.termux/files/home/nova3i/config/site.crt /data/data/com.termux/files/home/nova3i/config/site.key
+	import backends
 }
