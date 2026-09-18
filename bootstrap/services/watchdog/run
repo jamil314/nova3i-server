@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+export SVDIR="$PREFIX/var/service"
+exec "$HOME/nova3i/bootstrap/04-watchdog.sh"

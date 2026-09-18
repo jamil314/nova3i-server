@@ -10,10 +10,10 @@
     "admin": "/admin"
   },
   "status": {
-    "current": "Progress reporting endpoint is live. Hardening the stack: boot persistence, funnel watchdog, cert renewal.",
-    "next": "1) boot persistence (Termux:Boot + runit)  2) funnel/ingress watchdog  3) ts cert auto-renewal  4) ops README"
+    "current": "Stack hardened: boot hook, supervised tailscaled, funnel/ingress watchdog, ts cert auto-renewal. All checks green.",
+    "next": "1) ops README  2) long-run monitoring checkpoint  3) optional: expand app endpoints"
   },
-  "updated": "2026-09-18T06:10:00Z",
+  "updated": "2026-09-18T16:00:00Z",
   "history": [
     { "when": "2026-09-17", "what": "Termux bootstrap: patched tailscaled, runit supervision, ssh access" },
     { "when": "2026-09-17", "what": "Debian sandbox with api/node/admin apps behind Caddy on :8080" },
@@ -22,7 +22,9 @@
     { "when": "2026-09-18 05:30Z", "what": "Healthcheck app live at /health" },
     { "when": "2026-09-18 05:40Z", "what": "Node renamed localhost-0 -> nova3i; new tailscale cert; landing healthy" },
     { "when": "2026-09-18 06:00Z", "what": "Diagnosed Funnel SNI filter; issued Let's Encrypt cert via DNS-01; permanent URL set to ts.net" },
-    { "when": "2026-09-18 06:05Z", "what": "Committed healthcheck + Caddyfile + setup script changes" },
-    { "when": "2026-09-18 06:10Z", "what": "Progress/status reporting endpoint added: /health shows urls + progress" }
+    { "when": "2026-09-18 06:11Z", "what": "Progress reporting live: /health shows urls + progress; /health/progress HTML+JSON" },
+    { "when": "2026-09-18 06:45Z", "what": "Boot hook added (~/.termux/boot); services auto-start on device boot" },
+    { "when": "2026-09-18 06:46Z", "what": "Watchdog live (runit service): self-heals funnel ingress, restarts caddy/sandbox, auto-renews ts cert" },
+    { "when": "2026-09-18 16:00Z", "what": "Verified end to end: both funnel edges -> 200, cert 89d left, all services run" }
   ]
 }
