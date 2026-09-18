@@ -24,7 +24,8 @@
 		reverse_proxy 127.0.0.1:9000
 	}
 
-	handle /health {
+	@healthcheck path /health /health/*
+	handle @healthcheck {
 		reverse_proxy 127.0.0.1:3100
 	}
 

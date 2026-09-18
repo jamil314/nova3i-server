@@ -1,0 +1,28 @@
+{
+  "mission": "Nova 3i: always-on public server (Termux + Caddy + Debian sandbox + Tailscale Funnel)",
+  "base": "https://nova3i.taila5f58b.ts.net",
+  "urls": {
+    "landing": "/",
+    "health": "/health",
+    "progress": "/health/progress",
+    "api-hello": "/api/hello",
+    "node-hello": "/node/hello",
+    "admin": "/admin"
+  },
+  "status": {
+    "current": "Progress reporting endpoint is live. Hardening the stack: boot persistence, funnel watchdog, cert renewal.",
+    "next": "1) boot persistence (Termux:Boot + runit)  2) funnel/ingress watchdog  3) ts cert auto-renewal  4) ops README"
+  },
+  "updated": "2026-09-18T06:10:00Z",
+  "history": [
+    { "when": "2026-09-17", "what": "Termux bootstrap: patched tailscaled, runit supervision, ssh access" },
+    { "when": "2026-09-17", "what": "Debian sandbox with api/node/admin apps behind Caddy on :8080" },
+    { "when": "2026-09-17", "what": "Public exposure via Tailscale Funnel on tailnet DNS name" },
+    { "when": "2026-09-18 05:05Z", "what": "Funnel switched to raw TCP passthrough (:443 to Caddy :8443); full-bodied responses" },
+    { "when": "2026-09-18 05:30Z", "what": "Healthcheck app live at /health" },
+    { "when": "2026-09-18 05:40Z", "what": "Node renamed localhost-0 -> nova3i; new tailscale cert; landing healthy" },
+    { "when": "2026-09-18 06:00Z", "what": "Diagnosed Funnel SNI filter; issued Let's Encrypt cert via DNS-01; permanent URL set to ts.net" },
+    { "when": "2026-09-18 06:05Z", "what": "Committed healthcheck + Caddyfile + setup script changes" },
+    { "when": "2026-09-18 06:10Z", "what": "Progress/status reporting endpoint added: /health shows urls + progress" }
+  ]
+}
