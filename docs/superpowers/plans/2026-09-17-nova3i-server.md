@@ -660,7 +660,7 @@ chmod -R a+rX /root/venv
 
 When installing an agent later, run it as `agent`:
 ```bash
-proot-distro login debian --root -- su - agent -c 'cd ~/workspace && <agent command>'
+proot-distro login debian -u 0 -- su - agent -c 'cd ~/workspace && <agent command>'
 ```
 Never run the agent as root, and never give it Android storage permissions.
 
@@ -766,7 +766,7 @@ mkdir -p "$STAGE"
 cp -r "$NOVA/sandbox" "$STAGE/sandbox"
 
 echo "Deploying sandbox into Debian..."
-proot-distro login debian --root --bind "$STAGE:/root/nova3i-src" -- bash /root/nova3i-src/sandbox/setup-debian.sh /root/nova3i-src/sandbox
+proot-distro login debian -u 0 --bind "$STAGE:/root/nova3i-src" -- bash /root/nova3i-src/sandbox/setup-debian.sh /root/nova3i-src/sandbox
 
 echo "== Sandbox deployed =="
 ```
@@ -825,7 +825,7 @@ exec caddy run --config "$NOVA/config/Caddyfile" --adapter caddyfile
 
 ```bash
 #!/data/data/com.termux/files/usr/bin/bash
-exec proot-distro login debian --root -- /root/apps/start-all.sh
+exec proot-distro login debian -u 0 -- /root/apps/start-all.sh
 ```
 
 - [ ] **Step 6: Write `bootstrap/start-services.sh` (Termux:Boot entrypoint)**
@@ -913,7 +913,7 @@ Expected: ends with `== Debian sandbox ready ==` and `== Sandbox deployed ==`.
 - [ ] **Step 1: [DEVICE] Verify apps respond inside Debian**
 
 ```bash
-proot-distro login debian --root -- bash -lc '
+proot-distro login debian -u 0 -- bash -lc '
   (nohup /root/venv/bin/python3 -m uvicorn app:app --app-dir /root/apps/hello-py  --host 127.0.0.1 --port 8000 >/tmp/hp.log 2>&1 &)
   (nohup /root/venv/bin/python3 -m uvicorn app:app --app-dir /root/apps/admin-app --host 127.0.0.1 --port 9000 >/tmp/ad.log 2>&1 &)
   (nohup node /root/apps/hello-node/server.js >/tmp/hn.log 2>&1 &)
@@ -1126,7 +1126,7 @@ cat ~/nova3i/logs/boot.log; sv status tailscaled caddy sandbox
     # on device
     cp -r /sdcard/nova3i/sandbox ~/nova3i/sandbox
     bash ~/nova3i/bootstrap/03-deploy-sandbox.sh
-    proot-distro login debian --root -- pkill -f 'uvicorn|node' ; sv restart sandbox
+    proot-distro login debian -u 0 -- pkill -f 'uvicorn|node' ; sv restart sandbox
 
 ## Troubleshooting
 - **Funnel fails to get a cert**: verify MagicDNS + HTTPS + the `funnel` nodeAttr.

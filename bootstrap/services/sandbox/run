@@ -1,2 +1,2 @@
 #!/data/data/com.termux/files/usr/bin/bash
-exec proot-distro login debian --root -- /root/apps/start-all.sh
+exec proot-distro login debian -u 0 -- /root/apps/start-all.sh

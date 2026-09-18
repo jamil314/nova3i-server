@@ -41,6 +41,6 @@ chmod -R a+rX /root/venv
 
 # Agent launching contract: install/run any future agent as the `agent` user,
 # never as root, and never grant it Android storage permissions:
-#   proot-distro login debian --root -- su - agent -c 'cd ~/workspace && <agent command>'
+#   proot-distro login debian -u 0 -- su - agent -c 'cd ~/workspace && <agent command>'
 
 echo "== Debian sandbox ready =="
