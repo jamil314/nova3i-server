@@ -15,7 +15,7 @@
 **Files:**
 - Create: `~/.config/opencode/server.env` (mode `0600`)
 
-- [ ] **Step 1: Create the directory and env file**
+- [x] **Step 1: Create the directory and env file**
 
 Run:
 ```bash
@@ -27,12 +27,12 @@ unset PW
 ```
 Expected: no output; file created.
 
-- [ ] **Step 2: Verify permissions and contents**
+- [x] **Step 2: Verify permissions and contents**
 
 Run: `ls -l ~/.config/opencode/server.env && sed 's/=.*/=<redacted>/' ~/.config/opencode/server.env`
 Expected: `-rw------- 1 jamil jamil ... server.env` and exactly two lines, username `jamil`, password printed as `<redacted>`.
 
-- [ ] **Step 3: Commit (plan doc) — after all tasks**
+- [x] **Step 3: Commit (plan doc) — after all tasks**
 
 Defer all commits to final task.
 
@@ -41,7 +41,7 @@ Defer all commits to final task.
 **Files:**
 - Create: `~/.config/systemd/user/opencode-web.service`
 
-- [ ] **Step 1: Write the unit file**
+- [x] **Step 1: Write the unit file**
 
 Run (heredoc writes the unit):
 ```bash
@@ -66,14 +66,14 @@ EOF
 ```
 Expected: no output.
 
-- [ ] **Step 2: Verify the unit parses**
+- [x] **Step 2: Verify the unit parses**
 
 Run: `systemd-analyze --user verify ~/.config/systemd/user/opencode-web.service`
 Expected: exit 0, no errors printed.
 
 ### Task 3: Enable linger and start the service
 
-- [ ] **Step 1: Reload user units and enable linger**
+- [x] **Step 1: Reload user units and enable linger**
 
 Run:
 ```bash
@@ -83,7 +83,7 @@ systemctl --user enable --now opencode-web.service
 ```
 Expected: `Created symlink ... default.target` output; `enable-linger` silent.
 
-- [ ] **Step 2: Wait and confirm the service is active**
+- [x] **Step 2: Wait and confirm the service is active**
 
 Run: `systemctl --user status opencode-web.service --no-pager -l | head -8`
 Expected: `Active: active (running)`.
@@ -92,17 +92,17 @@ If `Active: failed`, inspect with `journalctl --user -u opencode-web --no-pager 
 
 ### Task 4: Verify from the PC
 
-- [ ] **Step 1: Confirm it binds on the LAN interface**
+- [x] **Step 1: Confirm it binds on the LAN interface**
 
 Run: `ss -tlnp | grep 4096`
 Expected: a line showing `0.0.0.0:4096` (or `*:4096`) owned by an `opencode` / `node` process.
 
-- [ ] **Step 2: Unauthorized request → 401**
+- [x] **Step 2: Unauthorized request → 401**
 
 Run: `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4096/`
 Expected: `401`
 
-- [ ] **Step 3: Authorized request → 200**
+- [x] **Step 3: Authorized request → 200**
 
 Load creds and hit the web root:
 ```bash
@@ -111,14 +111,14 @@ curl -s -o /dev/null -w '%{http_code}\n' -u "$OPENCODE_SERVER_USERNAME:$OPENCODE
 ```
 Expected: `200`
 
-- [ ] **Step 4: Confirm the LAN IP answer**
+- [x] **Step 4: Confirm the LAN IP answer**
 
 Run: `curl -s -o /dev/null -w '%{http_code}\n' -u "jamil:$(grep OPENCODE_SERVER_PASSWORD ~/.config/opencode/server.env | cut -d= -f2)" http://192.168.0.111:4096/`
 Expected: `200`
 
 ### Task 5: Phone-side check (user confirm)
 
-- [ ] **Step 1: Provide the URL and credentials to the user**
+- [x] **Step 1: Provide the URL and credentials to the user**
 
 On the phone (same home Wi-Fi, not on the nova3i): open `http://192.168.0.111:4096`, log in as `jamil` with the generated password. They should see the opencode web UI, project list, and session history (including the current conversation).
 
@@ -128,7 +128,7 @@ Run from the PC: `ip route get 192.168.0.111` to confirm the PC's address; check
 
 ### Task 6: Commit the plan (and any spec note)
 
-- [ ] **Step 1: Commit plan document**
+- [x] **Step 1: Commit plan document**
 
 Run:
 ```bash
@@ -138,7 +138,7 @@ git commit -m "docs: LAN opencode phone-control implementation plan"
 ```
 Expected: commit succeeds.
 
-- [ ] **Step 2: Note the spec deviation**
+- [x] **Step 2: Note the spec deviation**
 
 Append one line to `docs/superpowers/specs/2026-09-23-lan-opencode-phone-control-design.md` under "Components → 1": "Implementation uses CLI flags only; the `server` config block is NOT added, so the TUI stays loopback-bound." Commit:
 ```bash
