@@ -106,6 +106,15 @@ function buildIndex(p) {
       updated: p ? p.updated : null,
       history,
     },
+    spec: {
+      model: STATIC_SPEC.model,
+      os: STATIC_SPEC.os,
+      cores: STATIC_SPEC.cores,
+      totalMemoryKB: STATIC_SPEC.totalMemoryKB,
+      totalDiskKB: STATIC_SPEC.totalDiskKB,
+      startup: STARTUP_SPEC,
+      live: readLiveSpec(),
+    },
   };
 }
 
@@ -198,6 +207,10 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/health/urls') {
     json(res, 200, { base: p && p.base ? p.base : BASE, urls: idx.urls });
+    return;
+  }
+  if (pathname === '/health/resources') {
+    json(res, 200, readLiveSpec());
     return;
   }
   json(res, 404, { status: 'error', error: 'not found', path: url.pathname });
