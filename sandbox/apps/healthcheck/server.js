@@ -122,8 +122,15 @@ function absUrl(rel, base) {
   return /^https?:\/\//.test(rel) ? rel : base + (rel.startsWith('/') ? '' : '/') + rel;
 }
 
+function fmtKB(kb, total) {
+  if (kb == null || isNaN(kb)) return 'n/a';
+  if (total) return `${(kb / 1048576).toFixed(1)} GiB`;
+  return kb >= 1048576 ? `${(kb / 1048576).toFixed(2)} GiB` : `${(kb / 1024).toFixed(0)} MiB`;
+}
+
 function renderHtml(idx) {
   const pr = idx.progress || {};
+  const spec = idx.spec || {};
   const base = pr.base || BASE;
   const rows = (pr.history || [])
     .map((h) => `<li><span class="t">${escapeHtml(h.when)}</span>${escapeHtml(h.what)}</li>`)
@@ -154,6 +161,11 @@ function renderHtml(idx) {
   ul { padding-left: 18px; }
   .box { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
   .muted { color: #8b949e; font-size: 13px; }
+  table.spec { border-collapse: collapse; margin: 6px 0; }
+  table.spec td { padding: 3px 14px 3px 0; border: 0; }
+  button { background: #238636; color: #fff; border: 0; border-radius: 6px;
+           padding: 3px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #2ea043; }
 </style>
 </head>
 <body>
@@ -165,12 +177,47 @@ function renderHtml(idx) {
 <div class="box">${escapeHtml(pr.current || 'n/a')}</div>
 <h2>Next</h2>
 <div class="box">${escapeHtml(pr.next || 'n/a')}</div>
+<h2>Specs</h2>
+<div class="box">
+<table class="spec">
+  <tr><td class="t">Model</td><td>${escapeHtml(spec.model || 'n/a')}</td></tr>
+  <tr><td class="t">OS</td><td>Android ${escapeHtml(spec.os || 'n/a')}</td></tr>
+  <tr><td class="t">Cores</td><td>${spec.cores != null ? spec.cores : 'n/a'}</td></tr>
+  <tr><td class="t">Total RAM</td><td>${fmtKB(spec.totalMemoryKB, true)}</td></tr>
+  <tr><td class="t">Total storage</td><td>${fmtKB(spec.totalDiskKB, true)}</td></tr>
+</table>
+<p class="muted">Available resources</p>
+<table class="spec">
+  <tr><td class="t">At startup</td>
+      <td>mem ${fmtKB(spec.startup && spec.startup.memoryAvailableKB)} · disk ${fmtKB(spec.startup && spec.startup.diskFreeKB)}</td></tr>
+  <tr><td class="t">Now</td>
+      <td>mem <span id="live-mem">${fmtKB(spec.live && spec.live.memoryAvailableKB)}</span> · disk <span id="live-disk">${fmtKB(spec.live && spec.live.diskFreeKB)}</span>
+          <button id="spec-refresh" type="button">refresh</button></td></tr>
+</table>
+<p class="muted" id="spec-msg"></p>
+</div>
 <h2>Recent progress</h2>
 <ul>${rows || '<li class="muted">no history yet</li>'}</ul>
 <h2>Endpoints</h2>
 <ul>${links || '<li class="muted">none</li>'}</ul>
 <hr style="border:0;border-top:1px solid #30363d;margin-top:28px">
 <p class="muted">JSON: /health · <a href="${escapeHtml(base)}/health/progress?format=json">progress JSON</a></p>
+<script>
+document.getElementById('spec-refresh').addEventListener('click', async () => {
+  const msg = document.getElementById('spec-msg');
+  msg.textContent = 'refreshing…';
+  try {
+    const r = await fetch('/health/resources');
+    const d = await r.json();
+    const fmt = (kb) => kb == null ? 'n/a' : (kb >= 1048576 ? (kb / 1048576).toFixed(2) + ' GiB' : Math.round(kb / 1024) + ' MiB');
+    document.getElementById('live-mem').textContent = fmt(d.memoryAvailableKB);
+    document.getElementById('live-disk').textContent = fmt(d.diskFreeKB);
+    msg.textContent = 'updated ' + new Date(d.at).toISOString();
+  } catch (err) {
+    msg.textContent = 'refresh failed';
+  }
+});
+</script>
 </body>
 </html>
 `;
