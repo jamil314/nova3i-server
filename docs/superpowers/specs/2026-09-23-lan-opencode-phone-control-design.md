@@ -45,6 +45,8 @@ Add a `server` block so the web server binds consistently:
 ```
 CLI flags would take precedence; use `opencode web` explicitly when starting the service so behavior is unambiguous.
 
+**Implementation note (deviation):** CLI flags only — the `server` block is NOT added to `opencode.jsonc`, so the normal TUI stays loopback-bound and only the dedicated `opencode web` process binds 0.0.0.0 with auth.
+
 ### 2. Credentials (`server.env`)
 File `~/.config/opencode/server.env`, mode `0600`, containing:
 ```
