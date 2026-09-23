@@ -2,12 +2,65 @@
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const PORT = 3100;
 const BASE = 'https://nova3i.taila5f58b.ts.net';
 const PROGRESS_FILE = path.join(__dirname, 'progress.json');
 const START_TS = Date.now();
+
+function readProp(name) {
+  try {
+    const out = execFileSync('getprop', [name], { encoding: 'utf8' }).trim();
+    return out || 'n/a';
+  } catch (err) {
+    return 'n/a';
+  }
+}
+
+function readMemAvailableKB() {
+  try {
+    const mem = fs.readFileSync('/proc/meminfo', 'utf8');
+    const hit = mem.match(/^MemAvailable:\s+(\d+)\s+kB/m);
+    return hit ? parseInt(hit[1], 10) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function readDf() {
+  try {
+    const out = execFileSync('df', ['-k', '/'], { encoding: 'utf8' });
+    const line = out.trim().split('\n')[1].split(/\s+/);
+    return { totalKB: parseInt(line[1], 10), freeKB: parseInt(line[3], 10) };
+  } catch (err) {
+    return { totalKB: null, freeKB: null };
+  }
+}
+
+const STATIC_SPEC = {
+  model: readProp('ro.product.model'),
+  os: readProp('ro.build.version.release'),
+  cores: os.cpus().length,
+  totalMemoryKB: Math.round(os.totalmem() / 1024),
+  totalDiskKB: readDf().totalKB,
+};
+
+const STARTUP_SPEC = {
+  memoryAvailableKB: readMemAvailableKB(),
+  diskFreeKB: readDf().freeKB,
+  at: new Date().toISOString(),
+};
+
+function readLiveSpec() {
+  return {
+    memoryAvailableKB: readMemAvailableKB(),
+    diskFreeKB: readDf().freeKB,
+    at: new Date().toISOString(),
+  };
+}
 
 function readProgress() {
   try {
