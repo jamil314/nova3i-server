@@ -10,7 +10,7 @@
     "admin": "/admin"
   },
   "status": {
-    "current": "2026-09-23 recovery complete + boot persistence PROVEN: physical reboot test passed (Termux:Boot fired; runsvdir + all six services auto-started; public 200). Logging repaired: start-services now exports LOGDIR so sshd/ssh-agent log services (svlogd) come up at boot; supervision tree restarted clean (fresh pids, no orphan supervisors). Public /health 200 through a full 5-min watchdog cycle.",
+    "current": "2026-09-23 recovery complete + boot persistence PROVEN: physical reboot test passed (Termux:Boot fired; runsvdir + all six services auto-started; public 200). Logging repaired: start-services now exports LOGDIR so sshd/ssh-agent log services (svlogd) come up at boot; supervision tree restarted clean (fresh pids, no orphan supervisors). Public /health 200 through a full 5-min watchdog cycle. Device specs live: /health shows Nova 3i hardware + available resources; /health/resources + progress-page refresh button.",
     "next": "1) long-run monitoring checkpoint (watchdog/funnel/uptime)  2) optional: expand app endpoints"
   },
   "updated": "2026-09-23T17:20:00Z",
@@ -29,6 +29,7 @@
     { "when": "2026-09-22 23:18Z", "what": "Funnel ingress started failing (watchdog: 'ingress still failing after reapply'); device on flaky Wi-Fi" },
     { "when": "2026-09-23 16:42Z", "what": "Recovery: serve reset + clean funnel reapply restored ingress (200 both edges). Root cause: stale localhost-0.taila5f58b.ts.net:443/8443 funnel mounts poisoned control-plane routing; watchdog off/on churn could not heal it." },
     { "when": "2026-09-23 17:04Z", "what": "Boot persistence PROVEN: physical adb reboot; Termux:Boot fired, runsvdir + all six services (incl. sshd, ssh-agent) auto-started, public /health 200." },
-    { "when": "2026-09-23 17:15Z", "what": "Logging repaired: start-services.sh exports LOGDIR (was unset at boot -> svlogd fatal mkdir /sv RoSF, log services down). Supervision tree restarted clean; sshd/ssh-agent svlogd now run at $PREFIX/var/log/sv." }
+    { "when": "2026-09-23 17:15Z", "what": "Logging repaired: start-services.sh exports LOGDIR (was unset at boot -> svlogd fatal mkdir /sv RoSF, log services down). Supervision tree restarted clean; sshd/ssh-agent svlogd now run at $PREFIX/var/log/sv." },
+    { "when": "2026-09-23 19:16Z", "what": "Device specs live: /health shows Nova 3i hardware + available resources; /health/resources + progress-page refresh button" }
   ]
 }
