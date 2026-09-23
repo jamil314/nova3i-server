@@ -10,10 +10,10 @@
     "admin": "/admin"
   },
   "status": {
-    "current": "2026-09-23 incident recovered: public funnel ingress was dead (both edges timed out) after stale localhost-0 serve/funnel entries poisoned control-plane routing; watchdog churn (off/on) could not heal. Serve config reset + clean funnel reapply (tcp:443 -> 127.0.0.1:8443) restored ingress; watchdog and start-services now reset serve config before arming funnel. Verified 200 from PC and device.",
-    "next": "1) human: physical reboot test for boot-persistence  2) long-run monitoring checkpoint  3) optional: expand app endpoints"
+    "current": "2026-09-23 recovery complete + boot persistence PROVEN: physical reboot test passed (Termux:Boot fired; runsvdir + all six services auto-started; public 200). Logging repaired: start-services now exports LOGDIR so sshd/ssh-agent log services (svlogd) come up at boot; supervision tree restarted clean (fresh pids, no orphan supervisors). Public /health 200 through a full 5-min watchdog cycle.",
+    "next": "1) long-run monitoring checkpoint (watchdog/funnel/uptime)  2) optional: expand app endpoints"
   },
-  "updated": "2026-09-23T16:50:00Z",
+  "updated": "2026-09-23T17:20:00Z",
   "history": [
     { "when": "2026-09-17", "what": "Termux bootstrap: patched tailscaled, runit supervision, ssh access" },
     { "when": "2026-09-17", "what": "Debian sandbox with api/node/admin apps behind Caddy on :8080" },
@@ -27,6 +27,8 @@
     { "when": "2026-09-18 06:46Z", "what": "Watchdog live (runit service): self-heals funnel ingress, restarts caddy/sandbox, auto-renews ts cert" },
     { "when": "2026-09-18 16:00Z", "what": "Verified end to end: both funnel edges -> 200, cert 89d left, all services run" },
     { "when": "2026-09-22 23:18Z", "what": "Funnel ingress started failing (watchdog: 'ingress still failing after reapply'); device on flaky Wi-Fi" },
-    { "when": "2026-09-23 16:42Z", "what": "Recovery: serve reset + clean funnel reapply restored ingress (200 both edges). Root cause: stale localhost-0.taila5f58b.ts.net:443/8443 funnel mounts poisoned control-plane routing; watchdog off/on churn could not heal it." }
+    { "when": "2026-09-23 16:42Z", "what": "Recovery: serve reset + clean funnel reapply restored ingress (200 both edges). Root cause: stale localhost-0.taila5f58b.ts.net:443/8443 funnel mounts poisoned control-plane routing; watchdog off/on churn could not heal it." },
+    { "when": "2026-09-23 17:04Z", "what": "Boot persistence PROVEN: physical adb reboot; Termux:Boot fired, runsvdir + all six services (incl. sshd, ssh-agent) auto-started, public /health 200." },
+    { "when": "2026-09-23 17:15Z", "what": "Logging repaired: start-services.sh exports LOGDIR (was unset at boot -> svlogd fatal mkdir /sv RoSF, log services down). Supervision tree restarted clean; sshd/ssh-agent svlogd now run at $PREFIX/var/log/sv." }
   ]
 }

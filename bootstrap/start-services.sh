@@ -16,13 +16,15 @@ exec >>"$LOG" 2>&1
 echo "=== boot $(date -u +%FT%TZ) ==="
 termux-wake-lock
 
+# runit env: service log/run scripts require LOGDIR (svlogd) + SVDIR
+export SVDIR="$PREFIX/var/service"
+export LOGDIR="$PREFIX/var/log"
+
 # Ensure the runit supervision tree is up
 if ! pgrep -f runsvdir >/dev/null 2>&1; then
-  SVDIR="$PREFIX/var/service" runsvdir "$PREFIX/var/service" &
+  runsvdir "$SVDIR" &
   sleep 2
 fi
-
-export SVDIR="$PREFIX/var/service"
 for svc in tailscaled caddy sandbox watchdog sshd ssh-agent; do
   sv up "$svc" || echo "failed to start $svc"
 done
