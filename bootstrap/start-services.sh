@@ -23,7 +23,7 @@ if ! pgrep -f runsvdir >/dev/null 2>&1; then
 fi
 
 export SVDIR="$PREFIX/var/service"
-for svc in tailscaled caddy sandbox watchdog; do
+for svc in tailscaled caddy sandbox watchdog sshd ssh-agent; do
   sv up "$svc" || echo "failed to start $svc"
 done
 
@@ -32,6 +32,7 @@ for _ in $(seq 1 30); do
   "$TSBIN/tailscale" --socket="$SOCK" status >/dev/null 2>&1 && break
   sleep 1
 done
+"$TSBIN/tailscale" --socket="$SOCK" serve reset </dev/null >>"$LOG" 2>&1 || true
 "$TSBIN/tailscale" --socket="$SOCK" funnel --bg --tcp=443 tcp://127.0.0.1:8443 >>"$LOG" 2>&1 || true
 
 echo "=== boot done ==="

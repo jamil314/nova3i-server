@@ -31,7 +31,7 @@ log() { echo "$(date -u +%FT%TZ) $*" >>"$LOG"; }
 is_up() { "$TSBIN/tailscale" --socket="$SOCK" status >/dev/null 2>&1; }
 
 apply_funnel() {
-  "$TSBIN/tailscale" --socket="$SOCK" funnel --tcp=443 off >/dev/null 2>&1
+  "$TSBIN/tailscale" --socket="$SOCK" serve reset </dev/null >>"$LOG" 2>&1
   "$TSBIN/tailscale" --socket="$SOCK" funnel --bg --tcp=443 tcp://127.0.0.1:8443 >>"$LOG" 2>&1
 }
 
@@ -112,7 +112,7 @@ while true; do
   if ! ingress_ok; then
     log "ingress check failed; reapplying funnel"
     apply_funnel
-    sleep 10
+    sleep 30
     if ! ingress_ok; then
       log "ingress still failing after reapply"
     fi
