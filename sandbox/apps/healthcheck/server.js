@@ -40,24 +40,29 @@ function readDf() {
   }
 }
 
+function toGB(kb) {
+  if (kb == null || isNaN(kb)) return null;
+  return Math.round((kb / 1048576) * 100) / 100;
+}
+
 const STATIC_SPEC = {
   model: readProp('ro.product.model'),
   os: readProp('ro.build.version.release'),
   cores: os.cpus().length,
-  totalMemoryKB: Math.round(os.totalmem() / 1024),
-  totalDiskKB: readDf().totalKB,
+  totalMemoryGB: toGB(Math.round(os.totalmem() / 1024)),
+  totalDiskGB: toGB(readDf().totalKB),
 };
 
 const STARTUP_SPEC = {
-  memoryAvailableKB: readMemAvailableKB(),
-  diskFreeKB: readDf().freeKB,
+  memoryAvailableGB: toGB(readMemAvailableKB()),
+  diskFreeGB: toGB(readDf().freeKB),
   at: new Date().toISOString(),
 };
 
 function readLiveSpec() {
   return {
-    memoryAvailableKB: readMemAvailableKB(),
-    diskFreeKB: readDf().freeKB,
+    memoryAvailableGB: toGB(readMemAvailableKB()),
+    diskFreeGB: toGB(readDf().freeKB),
     at: new Date().toISOString(),
   };
 }
@@ -110,8 +115,8 @@ function buildIndex(p) {
       model: STATIC_SPEC.model,
       os: STATIC_SPEC.os,
       cores: STATIC_SPEC.cores,
-      totalMemoryKB: STATIC_SPEC.totalMemoryKB,
-      totalDiskKB: STATIC_SPEC.totalDiskKB,
+      totalMemoryGB: STATIC_SPEC.totalMemoryGB,
+      totalDiskGB: STATIC_SPEC.totalDiskGB,
       startup: STARTUP_SPEC,
       live: readLiveSpec(),
     },
@@ -122,10 +127,9 @@ function absUrl(rel, base) {
   return /^https?:\/\//.test(rel) ? rel : base + (rel.startsWith('/') ? '' : '/') + rel;
 }
 
-function fmtKB(kb, total) {
-  if (kb == null || isNaN(kb)) return 'n/a';
-  if (total) return `${(kb / 1048576).toFixed(1)} GiB`;
-  return kb >= 1048576 ? `${(kb / 1048576).toFixed(2)} GiB` : `${(kb / 1024).toFixed(0)} MiB`;
+function fmtGB(gb, total) {
+  if (gb == null || isNaN(gb)) return 'n/a';
+  return total ? `${gb.toFixed(1)} GB` : `${gb.toFixed(2)} GB`;
 }
 
 function renderHtml(idx) {
@@ -183,15 +187,15 @@ function renderHtml(idx) {
   <tr><td class="t">Model</td><td>${escapeHtml(spec.model || 'n/a')}</td></tr>
   <tr><td class="t">OS</td><td>Android ${escapeHtml(spec.os || 'n/a')}</td></tr>
   <tr><td class="t">Cores</td><td>${spec.cores != null ? spec.cores : 'n/a'}</td></tr>
-  <tr><td class="t">Total RAM</td><td>${fmtKB(spec.totalMemoryKB, true)}</td></tr>
-  <tr><td class="t">Total storage</td><td>${fmtKB(spec.totalDiskKB, true)}</td></tr>
+  <tr><td class="t">Total RAM</td><td>${fmtGB(spec.totalMemoryGB, true)}</td></tr>
+  <tr><td class="t">Total storage</td><td>${fmtGB(spec.totalDiskGB, true)}</td></tr>
 </table>
 <p class="muted">Available resources</p>
 <table class="spec">
   <tr><td class="t">At startup</td>
-      <td>mem ${fmtKB(spec.startup && spec.startup.memoryAvailableKB)} · disk ${fmtKB(spec.startup && spec.startup.diskFreeKB)}</td></tr>
+      <td>mem ${fmtGB(spec.startup && spec.startup.memoryAvailableGB)} · disk ${fmtGB(spec.startup && spec.startup.diskFreeGB)}</td></tr>
   <tr><td class="t">Now</td>
-      <td>mem <span id="live-mem">${fmtKB(spec.live && spec.live.memoryAvailableKB)}</span> · disk <span id="live-disk">${fmtKB(spec.live && spec.live.diskFreeKB)}</span>
+      <td>mem <span id="live-mem">${fmtGB(spec.live && spec.live.memoryAvailableGB)}</span> · disk <span id="live-disk">${fmtGB(spec.live && spec.live.diskFreeGB)}</span>
           <button id="spec-refresh" type="button">refresh</button></td></tr>
 </table>
 <p class="muted" id="spec-msg"></p>
@@ -209,9 +213,9 @@ document.getElementById('spec-refresh').addEventListener('click', async () => {
   try {
     const r = await fetch('/health/resources');
     const d = await r.json();
-    const fmt = (kb) => kb == null ? 'n/a' : (kb >= 1048576 ? (kb / 1048576).toFixed(2) + ' GiB' : Math.round(kb / 1024) + ' MiB');
-    document.getElementById('live-mem').textContent = fmt(d.memoryAvailableKB);
-    document.getElementById('live-disk').textContent = fmt(d.diskFreeKB);
+    const fmt = (gb) => gb == null ? 'n/a' : gb.toFixed(2) + ' GB';
+    document.getElementById('live-mem').textContent = fmt(d.memoryAvailableGB);
+    document.getElementById('live-disk').textContent = fmt(d.diskFreeGB);
     msg.textContent = 'updated ' + new Date(d.at).toISOString();
   } catch (err) {
     msg.textContent = 'refresh failed';

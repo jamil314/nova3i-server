@@ -29,7 +29,7 @@ check "health json"       "/health"    200 "healthcheck"
 check "progress page"     "/health/progress" 200 "mission control"
 check "progress json"     "/health/progress?format=json" 200 "mission"
 check "health spec json"  "/health" 200 "\"spec\""
-check "resources live"    "/health/resources" 200 "memoryAvailableKB"
+check "resources live"    "/health/resources" 200 "memoryAvailableGB"
 check "urls json"         "/health/urls" 200 "base"
 
 exit "$FAIL"
