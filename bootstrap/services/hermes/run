@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+exec proot-distro login debian -u 0 -- /usr/bin/su - agent -c 'cd /home/agent/workspace && /usr/local/bin/hermes gateway'

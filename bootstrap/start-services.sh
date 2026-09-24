@@ -25,7 +25,7 @@ if ! pgrep -f runsvdir >/dev/null 2>&1; then
   runsvdir "$SVDIR" &
   sleep 2
 fi
-for svc in tailscaled caddy sandbox watchdog sshd ssh-agent; do
+for svc in tailscaled caddy sandbox watchdog hermes sshd ssh-agent; do
   sv up "$svc" || echo "failed to start $svc"
 done
 
