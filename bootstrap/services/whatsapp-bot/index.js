@@ -14,8 +14,11 @@ const execFileAsync = promisify(execFile);
 
 const AUTH_DIR    = path.join(__dirname, 'auth');
 const OPENCODE    = '/home/agent/.opencode/bin/opencode';
-const HISTORY_MAX = 20;   // messages kept per group for context
+const HISTORY_MAX = 20;
 const OC_TIMEOUT  = 120_000;
+// Phone number (digits only, no +/spaces) allowed to DM the bot directly.
+// Set to null to disable DMs entirely.
+const DM_ALLOWED  = process.env.BOT_DM_NUMBER ?? null;
 
 // Per-group rolling message buffer  {jid -> [{sender, text}]}
 const history = new Map();
@@ -88,7 +91,10 @@ async function connect() {
       if (msg.key.fromMe) continue;
 
       const jid = msg.key.remoteJid ?? '';
-      if (!jid.endsWith('@g.us')) continue;   // groups only
+      const isGroup = jid.endsWith('@g.us');
+      const isDM    = jid.endsWith('@s.whatsapp.net');
+
+      if (!isGroup && !isDM) continue;
 
       const text =
         msg.message?.conversation ??
@@ -97,23 +103,30 @@ async function connect() {
         '';
       if (!text) continue;
 
-      const senderNum = (msg.key.participant ?? '').replace(/@.+$/, '');
+      // For groups: participant field; for DMs: remoteJid itself
+      const senderNum = isGroup
+        ? (msg.key.participant ?? '').replace(/@.+$/, '')
+        : jid.replace(/@.+$/, '');
 
-      // Log group JIDs — helps the user identify the target group on first run
       console.log(`[${jid}] ${senderNum}: ${text.slice(0, 100)}`);
 
       pushHistory(jid, senderNum, text);
 
-      // Detect @mention of the bot
-      const mentioned =
-        msg.message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
-      const botNum = (sock.user?.id ?? '').replace(/[^0-9]/g, '').slice(0, 15);
+      if (isDM) {
+        if (!DM_ALLOWED || senderNum !== DM_ALLOWED) continue;
+        // fall through — every DM from allowed number triggers opencode
+      } else {
+        // groups: require @mention
+        const mentioned =
+          msg.message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
+        const botNum = (sock.user?.id ?? '').replace(/[^0-9]/g, '').slice(0, 15);
 
-      const isMentioned =
-        mentioned.some(m => m.replace(/@.+$/, '') === botNum) ||
-        text.includes(`@${botNum}`);
+        const isMentioned =
+          mentioned.some(m => m.replace(/@.+$/, '') === botNum) ||
+          text.includes(`@${botNum}`);
 
-      if (!isMentioned) continue;
+        if (!isMentioned) continue;
+      }
 
       console.log(`[${jid}] @mentioned — calling opencode`);
 
