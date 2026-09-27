@@ -5,6 +5,7 @@ const {
   fetchLatestBaileysVersion,
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
+const qrcode = require('qrcode-terminal');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const path = require('path');
@@ -55,11 +56,16 @@ async function connect() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version }          = await fetchLatestBaileysVersion();
 
-  const sock = makeWASocket({ version, auth: state, printQRInTerminal: true });
+  const sock = makeWASocket({ version, auth: state });
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+    if (qr) {
+      console.log('\n=== SCAN THIS QR CODE IN WHATSAPP > LINKED DEVICES ===\n');
+      qrcode.generate(qr, { small: true });
+      console.log('\n=======================================================\n');
+    }
     if (connection === 'close') {
       const code = lastDisconnect?.error instanceof Boom
         ? lastDisconnect.error.output.statusCode
