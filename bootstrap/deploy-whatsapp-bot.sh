@@ -12,7 +12,11 @@ mkdir -p "$SVC_SRC"
 cat > "$SVC_SRC/run" << 'RUNEOF'
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
-exec proot-distro login debian -u 0 -- /usr/bin/su - agent -c 'cd /home/agent/whatsapp-bot && node index.js'
+# Set BOT_DM_NUMBER to the digits-only phone number that may DM the bot.
+# Leave unset (or empty) to disable DMs.
+export BOT_DM_NUMBER="8801786623305"
+exec proot-distro login debian -u 0 -- /usr/bin/su - agent -c \
+  "cd /home/agent/whatsapp-bot && BOT_DM_NUMBER='$BOT_DM_NUMBER' node index.js"
 RUNEOF
 chmod +x "$SVC_SRC/run"
 
@@ -48,6 +52,7 @@ const AUTH_DIR    = path.join(__dirname, 'auth');
 const OPENCODE    = '/home/agent/.opencode/bin/opencode';
 const HISTORY_MAX = 20;
 const OC_TIMEOUT  = 120_000;
+const DM_ALLOWED  = process.env.BOT_DM_NUMBER ?? null;
 
 const history = new Map();
 
@@ -117,7 +122,10 @@ async function connect() {
       if (msg.key.fromMe) continue;
 
       const jid = msg.key.remoteJid ?? '';
-      if (!jid.endsWith('@g.us')) continue;
+      const isGroup = jid.endsWith('@g.us');
+      const isDM    = jid.endsWith('@s.whatsapp.net');
+
+      if (!isGroup && !isDM) continue;
 
       const text =
         msg.message?.conversation ??
@@ -126,22 +134,29 @@ async function connect() {
         '';
       if (!text) continue;
 
-      const senderNum = (msg.key.participant ?? '').replace(/@.+$/, '');
+      const senderNum = isGroup
+        ? (msg.key.participant ?? '').replace(/@.+$/, '')
+        : jid.replace(/@.+$/, '');
+
       console.log(`[${jid}] ${senderNum}: ${text.slice(0, 100)}`);
 
       pushHistory(jid, senderNum, text);
 
-      const mentioned =
-        msg.message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
-      const botNum = (sock.user?.id ?? '').replace(/[^0-9]/g, '').slice(0, 15);
+      if (isDM) {
+        if (!DM_ALLOWED || senderNum !== DM_ALLOWED) continue;
+      } else {
+        const mentioned =
+          msg.message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
+        const botNum = (sock.user?.id ?? '').replace(/[^0-9]/g, '').slice(0, 15);
 
-      const isMentioned =
-        mentioned.some(m => m.replace(/@.+$/, '') === botNum) ||
-        text.includes(`@${botNum}`);
+        const isMentioned =
+          mentioned.some(m => m.replace(/@.+$/, '') === botNum) ||
+          text.includes(`@${botNum}`);
 
-      if (!isMentioned) continue;
+        if (!isMentioned) continue;
+      }
 
-      console.log(`[${jid}] @mentioned — calling opencode`);
+      console.log(`[${jid}] triggered — calling opencode`);
 
       try {
         const prompt = [
