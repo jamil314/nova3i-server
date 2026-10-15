@@ -4,7 +4,9 @@
 }
 
 (backends) {
-	encode gzip
+	# Not the camera: gzip buffers the endless MJPEG stream.
+	@compressible not path /cam/*
+	encode @compressible gzip
 
 	handle /api/* {
 		uri strip_prefix /api
@@ -22,6 +24,29 @@
 		}
 		uri strip_prefix /admin
 		reverse_proxy 127.0.0.1:9000
+	}
+
+	# Camera: cam-gate login (cookie) first, then IP Webcam's own password.
+	handle /cam-login* {
+		reverse_proxy 127.0.0.1:9100
+	}
+
+	redir /cam /cam/
+	handle /cam/* {
+		# route keeps this order; otherwise uri runs before forward_auth and
+		# cam-gate never sees the original /cam/... path for its redirect.
+		route {
+			forward_auth 127.0.0.1:9100 {
+				uri /auth
+			}
+			# Viewer page with the camera switch lives in cam-gate.
+			reverse_proxy /cam/view 127.0.0.1:9100
+			uri strip_prefix /cam
+			# Send each video frame as it arrives instead of buffering.
+			reverse_proxy 127.0.0.1:27461 {
+				flush_interval -1
+			}
+		}
 	}
 
 	@healthcheck path /health /health/*

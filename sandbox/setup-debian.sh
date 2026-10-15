@@ -25,6 +25,7 @@ set -euo pipefail
 cd /root/apps
 nohup /root/venv/bin/python3 -m uvicorn app:app --app-dir /root/apps/hello-py  --host 127.0.0.1 --port 8000 >/tmp/hello-py.log  2>&1 &
 nohup /root/venv/bin/python3 -m uvicorn app:app --app-dir /root/apps/admin-app --host 127.0.0.1 --port 9000 >/tmp/admin-app.log 2>&1 &
+nohup /root/venv/bin/python3 -m uvicorn app:app --app-dir /root/apps/cam-gate  --host 127.0.0.1 --port 9100 >/tmp/cam-gate.log  2>&1 &
 nohup node /root/apps/hello-node/server.js >/tmp/hello-node.log 2>&1 &
 nohup node /root/apps/healthcheck/server.js >/tmp/healthcheck.log 2>&1 &
 wait
