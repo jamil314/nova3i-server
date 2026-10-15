@@ -6,21 +6,23 @@ const {
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const qrcode = require('qrcode-terminal');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
+const { spawn } = require('child_process');
 const path = require('path');
-
-const execFileAsync = promisify(execFile);
+const fs = require('fs');
 
 const AUTH_DIR    = path.join(__dirname, 'auth');
 const OPENCODE    = '/home/agent/.opencode/bin/opencode';
 const HISTORY_MAX = 20;
 const OC_TIMEOUT  = 120_000;
-// Phone number (digits only, no +/spaces) allowed to DM the bot directly.
-// Set to null to disable DMs entirely.
 const DM_ALLOWED  = process.env.BOT_DM_NUMBER ?? null;
+const LOG_FILE    = path.join(__dirname, 'bot.log');
 
-// Per-group rolling message buffer  {jid -> [{sender, text}]}
+function log(...args) {
+  const line = `[${new Date().toISOString()}] ${args.join(' ')}\n`;
+  process.stdout.write(line);
+  try { fs.appendFileSync(LOG_FILE, line); } catch {}
+}
+
 const history = new Map();
 
 function pushHistory(jid, sender, text) {
@@ -30,29 +32,76 @@ function pushHistory(jid, sender, text) {
   if (buf.length > HISTORY_MAX) buf.shift();
 }
 
-function getContext(jid) {
-  return (history.get(jid) || []).map(m => `${m.sender}: ${m.text}`).join('\n');
-}
+const OC_DB_DIR = '/home/agent/.local/share/opencode';
 
 async function callOpencode(prompt) {
-  const { stdout } = await execFileAsync(
-    OPENCODE,
-    ['run', prompt, '--auto', '--format', 'json'],
-    { timeout: OC_TIMEOUT, env: process.env }
-  );
+  for (const f of [`${OC_DB_DIR}/opencode.db-shm`, `${OC_DB_DIR}/opencode.db-wal`]) {
+    try { fs.unlinkSync(f); } catch {}
+  }
 
-  // Parse newline-delimited JSON event stream, collect text parts
-  return stdout
-    .split('\n')
-    .filter(Boolean)
-    .reduce((acc, line) => {
-      try {
-        const ev = JSON.parse(line);
-        if (ev.type === 'text') acc += ev.part.text;
-      } catch {}
-      return acc;
-    }, '')
-    .trim();
+  return new Promise((resolve, reject) => {
+    // detached=true puts opencode in its own process group so we can kill the
+    // entire group (including child LLM runners) with process.kill(-pid, SIGKILL)
+    const proc = spawn(OPENCODE, ['run', prompt, '--format', 'json'], {
+      env: process.env,
+      cwd: '/home/agent',
+      detached: true,
+      // opencode reads piped stdin until EOF; an open pipe makes it hang forever
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let done = false;
+
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      try { process.kill(-proc.pid, 'SIGKILL'); } catch {}
+      reject(Object.assign(new Error('opencode timed out'), { killed: true, signal: 'SIGKILL', code: null, stderr }));
+    }, OC_TIMEOUT);
+
+    proc.stdout.on('data', chunk => { stdout += chunk; });
+    proc.stderr.on('data', chunk => { stderr += chunk; });
+
+    // Once the parent exits, reap any lingering children so they release the
+    // stdout pipe; otherwise 'close' would wait until the timeout fires.
+    proc.on('exit', () => {
+      try { process.kill(-proc.pid, 'SIGKILL'); } catch {}
+    });
+
+    proc.on('close', (code, signal) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (code !== 0) {
+        return reject(Object.assign(
+          new Error(`opencode exited code=${code} signal=${signal}`),
+          { killed: !!signal, signal, code, stderr }
+        ));
+      }
+      resolve(
+        stdout
+          .split('\n')
+          .filter(Boolean)
+          .reduce((acc, line) => {
+            try {
+              const ev = JSON.parse(line);
+              if (ev.type === 'text') acc += ev.part.text;
+            } catch {}
+            return acc;
+          }, '')
+          .trim()
+      );
+    });
+
+    proc.on('error', err => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
 }
 
 async function connect() {
@@ -65,91 +114,86 @@ async function connect() {
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      console.log('\n=== SCAN THIS QR CODE IN WHATSAPP > LINKED DEVICES ===\n');
+      log('QR code ready — scan in WhatsApp > Linked Devices');
       qrcode.generate(qr, { small: true });
-      console.log('\n=======================================================\n');
     }
     if (connection === 'close') {
       const code = lastDisconnect?.error instanceof Boom
         ? lastDisconnect.error.output.statusCode
         : undefined;
+      log('connection closed, code:', code);
       if (code !== DisconnectReason.loggedOut) {
-        console.log('reconnecting…');
+        log('reconnecting…');
         connect();
       } else {
-        console.error('logged out — delete auth/ and restart to re-pair');
+        log('logged out — delete auth/ and restart to re-pair');
       }
     } else if (connection === 'open') {
-      console.log('connected, bot JID:', sock.user?.id);
+      log('connected, bot JID:', sock.user?.id, '| DM_ALLOWED:', DM_ALLOWED);
     }
   });
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    log(`messages.upsert type=${type} count=${messages.length}`);
     if (type !== 'notify') return;
 
     for (const msg of messages) {
+      const jid = msg.key.remoteJid ?? '';
+      log(`msg from=${jid} fromMe=${msg.key.fromMe} msgTypes=${Object.keys(msg.message ?? {}).join(',')}`);
+
       if (msg.key.fromMe) continue;
 
-      const jid = msg.key.remoteJid ?? '';
       const isGroup = jid.endsWith('@g.us');
-      const isDM    = jid.endsWith('@s.whatsapp.net');
+      const isDM    = jid.endsWith('@s.whatsapp.net') || jid.endsWith('@lid');
 
-      if (!isGroup && !isDM) continue;
+      if (!isGroup && !isDM) { log(`skip: unknown jid type ${jid}`); continue; }
 
       const text =
         msg.message?.conversation ??
         msg.message?.extendedTextMessage?.text ??
         msg.message?.ephemeralMessage?.message?.extendedTextMessage?.text ??
         '';
-      if (!text) continue;
 
-      // For groups: participant field; for DMs: remoteJid itself
+      if (!text) { log(`skip: no text in message`); continue; }
+
       const senderNum = isGroup
         ? (msg.key.participant ?? '').replace(/@.+$/, '')
         : jid.replace(/@.+$/, '');
 
-      console.log(`[${jid}] ${senderNum}: ${text.slice(0, 100)}`);
-
-      pushHistory(jid, senderNum, text);
+      log(`[${jid}] sender=${senderNum} text="${text.slice(0, 80)}"`);
 
       if (isDM) {
-        if (!DM_ALLOWED || senderNum !== DM_ALLOWED) continue;
-        // fall through — every DM from allowed number triggers opencode
+        log(`DM check: senderNum=${senderNum} DM_ALLOWED=${DM_ALLOWED} isLid=${jid.endsWith('@lid')}`);
+        const lidDM = jid.endsWith('@lid');
+        if (!DM_ALLOWED) { log('skip: DMs disabled'); continue; }
+        if (!lidDM && senderNum !== DM_ALLOWED) { log('skip: DM not from allowed number'); continue; }
       } else {
-        // groups: require @mention
         const mentioned =
           msg.message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
         const botNum = (sock.user?.id ?? '').replace(/[^0-9]/g, '').slice(0, 15);
+        log(`mention check: botNum=${botNum} mentioned=[${mentioned.join(',')}]`);
 
         const isMentioned =
           mentioned.some(m => m.replace(/@.+$/, '') === botNum) ||
           text.includes(`@${botNum}`);
 
-        if (!isMentioned) continue;
+        if (!isMentioned) { log('skip: bot not mentioned'); continue; }
       }
 
-      console.log(`[${jid}] @mentioned — calling opencode`);
+      log(`[${jid}] triggered — calling opencode`);
+      pushHistory(jid, senderNum, text);
 
       try {
-        const prompt = [
-          'You are a helpful assistant in a WhatsApp group chat.',
-          'Recent conversation for context:',
-          '',
-          getContext(jid),
-          '',
-          'The group member just tagged you:',
-          text,
-          '',
-          'Reply concisely in the same language as the conversation.',
-        ].join('\n');
-
-        const reply = await callOpencode(prompt);
+        const reply = await callOpencode(text);
+        log(`opencode reply length=${reply.length}`);
 
         if (reply) {
           await sock.sendMessage(jid, { text: reply }, { quoted: msg });
+          log(`reply sent to ${jid}`);
         }
       } catch (err) {
-        console.error('opencode error:', err.message);
+        log('opencode error:', err.message, `| killed=${err.killed} signal=${err.signal} code=${err.code}`);
+        if (err.stderr) log('opencode stderr:', String(err.stderr).slice(0, 500));
         await sock.sendMessage(
           jid,
           { text: '(error generating reply — check server logs)' },
@@ -160,4 +204,5 @@ async function connect() {
   });
 }
 
-connect().catch(err => { console.error(err); process.exit(1); });
+log('bot starting, DM_ALLOWED:', DM_ALLOWED, '| log file:', LOG_FILE);
+connect().catch(err => { log('fatal:', err.message); process.exit(1); });
