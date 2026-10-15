@@ -152,7 +152,7 @@ def logout():
     return resp
 
 
-# Live view with a front/rear switch. The phone can only run one camera at a
+# Live view with a front/rear switch and a rotate button. The phone can only run one camera at a
 # time (Android 9, no concurrent camera support), so this swaps IP Webcam's
 # camera via its /settings/ffc endpoint. All /cam/... calls below go back
 # through Caddy and carry the browser's IP Webcam login.
@@ -181,12 +181,17 @@ VIEWER_HTML = """<!doctype html>
 <div id="bar">
   <span id="state">...</span>
   <button id="swap" type="button">Switch camera</button>
+  <button id="rotate" type="button">Rotate</button>
 </div>
 <script>
 const img = document.getElementById("stream");
 const state = document.getElementById("state");
 const swap = document.getElementById("swap");
+const rotate = document.getElementById("rotate");
 let front = null;
+// IP Webcam's orientation values, in 90-degree steps.
+const ORIENTATIONS = ["landscape", "portrait", "upsidedown", "upsidedown_portrait"];
+let orientation = null;
 
 function show(label) { state.textContent = label; }
 function reload() { img.src = "/cam/video?t=" + Date.now(); }
@@ -199,6 +204,7 @@ async function readState() {
     const r = await fetch("/cam/status.json", { cache: "no-store" });
     const s = await r.json();
     front = (s.curvals || {}).ffc === "on";
+    orientation = (s.curvals || {}).orientation || null;
     show(front ? "Front" : "Rear");
   } catch (e) {
     show("Unknown");
@@ -212,6 +218,16 @@ swap.onclick = async () => {
     await fetch("/cam/settings/ffc?set=" + (front ? "off" : "on"), { cache: "no-store" });
   } catch (e) {}
   setTimeout(async () => { reload(); await readState(); swap.disabled = false; }, 2000);
+};
+
+rotate.onclick = async () => {
+  rotate.disabled = true;
+  const next = ORIENTATIONS[(ORIENTATIONS.indexOf(orientation) + 1) % ORIENTATIONS.length];
+  try {
+    await fetch("/cam/settings/orientation?set=" + next, { cache: "no-store" });
+    orientation = next;
+  } catch (e) {}
+  setTimeout(() => { reload(); rotate.disabled = false; }, 1000);
 };
 
 reload();
