@@ -171,18 +171,27 @@ VIEWER_HTML = """<!doctype html>
   #stream { max-width: 100%; max-height: 100%; }
   #bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;
          padding: 12px 16px; }
-  button { font: inherit; padding: 10px 18px; border-radius: 8px; border: 1px solid #555;
-           background: #222; color: inherit; }
+  button { display: grid; place-items: center; width: 48px; height: 48px; padding: 0;
+           border-radius: 50%; border: 1px solid #555; background: #222; color: inherit; }
+  button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2;
+               stroke-linecap: round; stroke-linejoin: round; }
   button:disabled { opacity: .5; }
+  button[aria-pressed="true"] { background: #f5b301; border-color: #f5b301; color: #000; }
   #state { min-width: 9ch; text-align: center; }
 </style></head>
 <body>
 <div id="view"><img id="stream" alt="Camera stream"></div>
 <div id="bar">
   <span id="state">...</span>
-  <button id="swap" type="button">Switch camera</button>
-  <button id="rotate" type="button">Rotate</button>
-  <button id="light" type="button">Light</button>
+  <button id="swap" type="button" aria-label="Switch camera" title="Switch camera">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+  </button>
+  <button id="rotate" type="button" aria-label="Rotate" title="Rotate">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+  </button>
+  <button id="light" type="button" aria-label="Light" title="Light" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12"/><path d="M12 12v.01"/></svg>
+  </button>
 </div>
 <script>
 const img = document.getElementById("stream");
@@ -197,6 +206,7 @@ const light = document.getElementById("light");
 let torch = false;
 
 function show(label) { state.textContent = label; }
+function setTorch(on) { torch = on; light.setAttribute("aria-pressed", String(on)); }
 function reload() { img.src = "/cam/video?t=" + Date.now(); }
 
 // The stream drops while IP Webcam reopens the camera; keep retrying.
@@ -208,8 +218,7 @@ async function readState() {
     const s = await r.json();
     front = (s.curvals || {}).ffc === "on";
     orientation = (s.curvals || {}).orientation || null;
-    torch = (s.curvals || {}).torch === "on";
-    light.textContent = torch ? "Light off" : "Light";
+    setTorch((s.curvals || {}).torch === "on");
     show(front ? "Front" : "Rear");
   } catch (e) {
     show("Unknown");
@@ -240,8 +249,7 @@ light.onclick = async () => {
   light.disabled = true;
   try {
     await fetch(torch ? "/cam/disabletorch" : "/cam/enabletorch", { cache: "no-store" });
-    torch = !torch;
-    light.textContent = torch ? "Light off" : "Light";
+    setTorch(!torch);
   } catch (e) {}
   light.disabled = false;
 };
