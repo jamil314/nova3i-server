@@ -152,7 +152,7 @@ def logout():
     return resp
 
 
-# Live view with a front/rear switch and a rotate button. The phone can only run one camera at a
+# Live view with a front/rear switch, rotate and flash LED buttons. The phone can only run one camera at a
 # time (Android 9, no concurrent camera support), so this swaps IP Webcam's
 # camera via its /settings/ffc endpoint. All /cam/... calls below go back
 # through Caddy and carry the browser's IP Webcam login.
@@ -169,7 +169,7 @@ VIEWER_HTML = """<!doctype html>
          display: grid; grid-template-rows: 1fr auto; height: 100vh; height: 100dvh; }
   #view { display: grid; place-items: center; overflow: hidden; min-height: 0; }
   #stream { max-width: 100%; max-height: 100%; }
-  #bar { display: flex; gap: 12px; align-items: center; justify-content: center;
+  #bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center;
          padding: 12px 16px; }
   button { font: inherit; padding: 10px 18px; border-radius: 8px; border: 1px solid #555;
            background: #222; color: inherit; }
@@ -182,6 +182,7 @@ VIEWER_HTML = """<!doctype html>
   <span id="state">...</span>
   <button id="swap" type="button">Switch camera</button>
   <button id="rotate" type="button">Rotate</button>
+  <button id="light" type="button">Light</button>
 </div>
 <script>
 const img = document.getElementById("stream");
@@ -192,6 +193,8 @@ let front = null;
 // IP Webcam's orientation values, in 90-degree steps.
 const ORIENTATIONS = ["landscape", "portrait", "upsidedown", "upsidedown_portrait"];
 let orientation = null;
+const light = document.getElementById("light");
+let torch = false;
 
 function show(label) { state.textContent = label; }
 function reload() { img.src = "/cam/video?t=" + Date.now(); }
@@ -205,6 +208,8 @@ async function readState() {
     const s = await r.json();
     front = (s.curvals || {}).ffc === "on";
     orientation = (s.curvals || {}).orientation || null;
+    torch = (s.curvals || {}).torch === "on";
+    light.textContent = torch ? "Light off" : "Light";
     show(front ? "Front" : "Rear");
   } catch (e) {
     show("Unknown");
@@ -228,6 +233,17 @@ rotate.onclick = async () => {
     orientation = next;
   } catch (e) {}
   setTimeout(() => { reload(); rotate.disabled = false; }, 1000);
+};
+
+// The flash LED is on the rear camera; IP Webcam ignores this on the front one.
+light.onclick = async () => {
+  light.disabled = true;
+  try {
+    await fetch(torch ? "/cam/disabletorch" : "/cam/enabletorch", { cache: "no-store" });
+    torch = !torch;
+    light.textContent = torch ? "Light off" : "Light";
+  } catch (e) {}
+  light.disabled = false;
 };
 
 reload();
