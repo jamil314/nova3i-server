@@ -82,6 +82,8 @@ async function callOpencode(prompt) {
       env: process.env,
       cwd: '/home/agent',
       detached: true,
+      // opencode reads piped stdin until EOF; an open pipe makes it hang forever
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     let stdout = '';
@@ -97,6 +99,12 @@ async function callOpencode(prompt) {
 
     proc.stdout.on('data', chunk => { stdout += chunk; });
     proc.stderr.on('data', chunk => { stderr += chunk; });
+
+    // Once the parent exits, reap any lingering children so they release the
+    // stdout pipe; otherwise 'close' would wait until the timeout fires.
+    proc.on('exit', () => {
+      try { process.kill(-proc.pid, 'SIGKILL'); } catch {}
+    });
 
     proc.on('close', (code, signal) => {
       if (done) return;
